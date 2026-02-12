@@ -60,7 +60,7 @@ function skipCommentsAndWhitespace(
   let idx = startIndex;
 
   while (idx < code.length) {
-    // Skip leading whitespace
+    // Skip leading whitespace (spaces and tabs)
     while (
       idx < code.length &&
       (code[idx] === " " || code[idx] === "\t")
@@ -70,6 +70,13 @@ function skipCommentsAndWhitespace(
     }
 
     if (idx >= code.length) break;
+
+    // Skip blank lines (empty or whitespace-only lines)
+    if (code[idx] === "\n") {
+      chars[idx] = { char: chars[idx].char, status: "correct", autoCompleted: true };
+      idx++;
+      continue;
+    }
 
     // Find end of the current line
     let lineEnd = idx;
