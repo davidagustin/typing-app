@@ -1,109 +1,398 @@
-# Welcome to React Router + Cloudflare Workers!
+# TypeCode
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/cloudflare/templates/tree/main/react-router-starter-template)
+A precision typing practice application for programmers. Type syntactically correct code across 12 languages while real-time metrics track your accuracy, speed, and improvement.
 
-![React Router Starter Template Preview](https://imagedelivery.net/wSMYJvS3Xw-n339CbDyDIA/bfdc2f85-e5c9-4c92-128b-3a6711249800/public)
+**Live Demo:** https://typing-app.app-production.workers.dev
 
-<!-- dash-content-start -->
+**Repository:** https://github.com/davidagustin/typing-app
 
-A modern, production-ready template for building full-stack React applications using [React Router](https://reactrouter.com/) and the [Cloudflare Vite plugin](https://developers.cloudflare.com/workers/vite-plugin/).
+---
 
 ## Features
 
-- 🚀 Server-side rendering
-- ⚡️ Hot Module Replacement (HMR)
-- 📦 Asset bundling and optimization
-- 🔄 Data loading and mutations
-- 🔒 TypeScript by default
-- 🎉 TailwindCSS for styling
-- 📖 [React Router docs](https://reactrouter.com/)
-- 🔎 Built-in Observability to monitor your Worker
-<!-- dash-content-end -->
+### Real-Time Typing Engine
+- Character-by-character verification with reducer-based state machine
+- Immediate visual feedback on keystroke correctness
+- Support for special keys: Tab, Enter, Backspace with intelligent handling
+- Keystroke statistics: WPM, accuracy rate, total/correct/incorrect count
+
+### Built-In Code Lessons
+12 professional code examples across diverse language ecosystems:
+- JavaScript (REST API with Express.js)
+- TypeScript
+- Python
+- Rust
+- Go
+- Java
+- C
+- C++
+- Ruby
+- Swift
+- CSS
+- Kotlin
+- PHP
+
+### Custom Code Support
+Upload or paste any code file you want to practice:
+- Multi-language support with auto-detection
+- File upload with drag-and-drop interface
+- localStorage persistence for custom lessons across sessions
+- Code normalization (line-ending standardization, trailing whitespace cleanup)
+- Supports 20+ file extensions including .js, .ts, .py, .rs, .go, .java, .cpp, .rb, and more
+
+### Smart Auto-Completion
+Language-aware handling of comments and indentation:
+- Leading whitespace automatically skipped (tab/space indentation)
+- Full-line comments auto-completed (supports //, #, --, /* */)
+- Comment detection excludes C preprocessor directives, Rust attributes, and shell shebangs
+- Blank lines intelligently skipped
+- Transparent auto-completion highlighted in UI
+
+### Performance Tracking
+- Real-time statistics during practice sessions
+- Results screen with accuracy and speed metrics
+- Performance rating system based on accuracy thresholds
+- Local storage persistence for session history (no backend required)
+
+### Responsive Dark Theme
+- Optimized for both desktop and mobile environments
+- Monospace font rendering for accurate code display
+- Custom CSS animations: blinking cursor, fade-in overlays, smooth transitions
+- High contrast color scheme for long typing sessions
+
+---
+
+## Tech Stack
+
+### Frontend Framework
+- **React 19** with Server-Side Rendering
+- **React Router 7** full-stack framework
+- **TypeScript 5.9** for type safety
+
+### Styling
+- **Tailwind CSS 4** utility-first CSS framework
+- Custom CSS animations and dark theme
+
+### Build & Deployment
+- **Vite 6** as build tooling and development server
+- **Cloudflare Workers** for edge deployment with global low-latency
+- **wrangler** CLI for serverless configuration and deployment
+
+### Dependencies
+Zero external UI libraries, state management libraries, or form libraries. Total production dependencies: 3 packages.
+- react (19.0.0)
+- react-dom (19.0.0)
+- react-router (7.9.6)
+- isbot (for SSR bot detection)
+
+---
+
+## Architecture
+
+### Project Structure
+
+```
+app/
+├── routes/
+│   ├── home.tsx          # Landing page with lesson selection
+│   ├── lessons.tsx       # Lesson grid and filtering
+│   ├── custom.tsx        # Custom code upload and management
+│   └── practice.tsx      # Main typing practice interface
+├── components/
+│   ├── Header.tsx        # Navigation and branding
+│   ├── LessonCard.tsx    # Lesson preview and selection
+│   ├── StatsBar.tsx      # Live metrics display (WPM, accuracy)
+│   └── ResultsScreen.tsx # Performance summary after session
+├── hooks/
+│   ├── useTypingEngine.ts     # Core typing state machine
+│   ├── useTimer.ts            # Elapsed time tracking
+│   └── useLocalStorage.ts     # Persistent lesson storage
+├── data/
+│   └── lessons.ts        # 12 built-in lessons with metadata
+├── entry.server.tsx      # SSR entry point for Cloudflare Workers
+├── root.tsx              # Root layout and app shell
+└── app.css               # Global styles and animations
+```
+
+### Design Patterns
+
+#### Pure Reducer-Based Typing Engine
+The core typing logic is a pure reducer function (`typingReducer`) that manages immutable state transitions:
+
+```typescript
+interface TypingState {
+  chars: CharState[];           // Array of character + status pairs
+  currentIndex: number;         // Active character position
+  isComplete: boolean;          // Completion flag
+  correctKeystrokes: number;    // Accuracy metric
+  incorrectKeystrokes: number;  // Error metric
+  totalKeystrokes: number;      // Total input count
+  hasStarted: boolean;          // Session start flag
+  code: string;                 // Source code string
+}
+
+type TypingAction =
+  | { type: "KEYSTROKE"; key: string }
+  | { type: "RESET" };
+```
+
+Each keystroke triggers a deterministic state transition:
+- Correct key → advance cursor, mark character as correct
+- Incorrect key → mark character as incorrect, prevent advancement (user must backspace)
+- Backspace → revert cursor, reset incorrect characters
+- Enter/Tab → special handling with auto-completion of next line's indentation and comments
+
+**Engineering benefit:** Pure reducer functions are trivial to unit test, easy to reason about, and naturally support undo/redo.
+
+#### Language-Aware Comment Detection
+The engine detects and auto-skips comment lines with language-specific logic:
+
+```typescript
+function isCommentLine(lineContent: string): boolean {
+  const trimmed = lineContent.trim();
+  // C-style: //
+  if (trimmed.startsWith("//")) return true;
+  // Block comments: /* */ or * continuation
+  if (trimmed.startsWith("/*") || trimmed.startsWith("*/")) return true;
+  // Hash (Python, Ruby, Shell) - excludes #! shebangs and #[ Rust attributes
+  if (trimmed.startsWith("#")) {
+    if (trimmed.startsWith("#!") || trimmed.startsWith("#[")) return false;
+    // Exclude C preprocessor directives
+    if (/^#\s*(include|define|ifdef|ifndef|endif)/.test(trimmed)) return false;
+    return true;
+  }
+  // SQL / Lua / Haskell: -- (but not HTML -->)
+  if (trimmed.startsWith("--") && !trimmed.startsWith("-->")) return true;
+  return false;
+}
+```
+
+This approach handles the complexity of multiple language syntax rules in a single, maintainable function.
+
+#### Separation of Concerns via Custom Hooks
+Three focused custom hooks encapsulate distinct responsibilities:
+
+1. **useTypingEngine** — Keystroke processing, character validation, state transitions
+2. **useTimer** — Elapsed time tracking, optional time limits, tick lifecycle
+3. **useLocalStorage** — Persistent storage of custom lessons, retrieval, deletion
+
+Each hook exports a clean interface, making them easy to test independently and reuse across components.
+
+#### SSR with Cloudflare Workers
+The application uses React Router's full-stack capabilities with server-side rendering on Cloudflare Workers:
+- `entry.server.tsx` — Server entry point that handles request routing and SSR
+- `root.tsx` — Root layout component that establishes global HTML structure
+- Isbot middleware prevents bot crawlers from unnecessarily rendering interactive content
+
+**Benefit:** Reduced Time to First Byte (TTFB) and improved perceived performance.
+
+#### Responsive Component Hierarchy
+Components are structured with a clear parent-child flow:
+- **Header** — Navigation, branding, routing
+- **LessonCard** — Self-contained lesson preview with metadata
+- **StatsBar** — Renders live typing metrics (WPM, accuracy %)
+- **ResultsScreen** — Performance summary overlay after practice session
+
+---
+
+## How It Works
+
+### Typing Engine State Machine
+
+The typing engine implements a robust state machine that handles character-by-character input:
+
+1. **Initialization** — Code is parsed into an array of `CharState` objects. Leading comments and whitespace are pre-marked as auto-completed.
+2. **Keystroke Input** — Each keystroke dispatches an action to the reducer.
+3. **Character Matching** — If the key matches the expected character, mark as `correct` and advance cursor.
+4. **Error Handling** — Mismatches mark the character as `incorrect`. User must backspace to retry.
+5. **Special Keys**:
+   - Enter — Auto-skips the next line's indentation and any comments
+   - Tab — Matches tab characters (rendered as 4 spaces)
+   - Backspace — Reverts cursor and clears error states
+6. **Completion** — When all characters are consumed, the session is marked complete.
+
+### Custom Lesson Management
+
+Custom lessons leverage browser localStorage for persistence:
+- Each lesson is stored as JSON with metadata (language, fileName, code)
+- A unique lesson ID is generated for routing
+- Users can upload files via input or paste code directly
+- Code is normalized (line endings, trailing whitespace) before storage
+- Custom lessons are seamlessly accessible from the practice interface
+
+### Real-Time Metrics
+
+Live metrics update on every keystroke:
+- **WPM** — Words per minute, calculated from total keystrokes
+- **Accuracy** — Percentage of correct keystrokes
+- **Progress** — Visual representation of completion percentage
+
+---
 
 ## Getting Started
 
-Outside of this repo, you can start a new project with this template using [C3](https://developers.cloudflare.com/pages/get-started/c3/) (the `create-cloudflare` CLI):
+### Prerequisites
+- Node.js 18+
+- npm 9+ or compatible package manager
 
+### Development Setup
+
+Clone the repository:
 ```bash
-npm create cloudflare@latest -- --template=cloudflare/templates/react-router-starter-template
+git clone https://github.com/davidagustin/typing-app.git
+cd typing-app
 ```
 
-A live public deployment of this template is available at [https://react-router-starter-template.templates.workers.dev](https://react-router-starter-template.templates.workers.dev)
-
-### Installation
-
-Install the dependencies:
-
+Install dependencies:
 ```bash
 npm install
 ```
 
-### Development
-
-Start the development server with HMR:
-
+Start the development server:
 ```bash
 npm run dev
 ```
 
-Your application will be available at `http://localhost:5173`.
+Open http://localhost:5173 in your browser.
 
-## Typegen
-
-Generate types for your Cloudflare bindings in `wrangler.json`:
-
-```sh
-npm run typegen
-```
-
-## Building for Production
-
-Create a production build:
+### Build for Production
 
 ```bash
 npm run build
 ```
 
-## Previewing the Production Build
+This generates an optimized build in the `dist` directory.
 
-Preview the production build locally:
+### Type Checking
 
+Verify TypeScript compliance:
+```bash
+npm run typecheck
+```
+
+This runs the TypeScript compiler and React Router's type generation.
+
+### Preview Production Build
+
+Build and preview locally:
 ```bash
 npm run preview
 ```
 
+---
+
 ## Deployment
 
-If you don't have a Cloudflare account, [create one here](https://dash.cloudflare.com/sign-up)! Go to your [Workers dashboard](https://dash.cloudflare.com/?to=%2F%3Aaccount%2Fworkers-and-pages) to see your [free custom Cloudflare Workers subdomain](https://developers.cloudflare.com/workers/configuration/routing/workers-dev/) on `*.workers.dev`.
+This project is deployed on **Cloudflare Workers** for global edge performance.
 
-Once that's done, you can build your app:
+### Deploy to Cloudflare
 
-```sh
-npm run build
-```
+Ensure you have a Cloudflare account and wrangler CLI installed:
 
-And deploy it:
-
-```sh
+```bash
 npm run deploy
 ```
 
-To deploy a preview URL:
+This command:
+1. Compiles TypeScript and optimizes assets with Vite
+2. Uploads the compiled bundle to Cloudflare Workers
+3. Makes the application available at your configured Cloudflare Workers domain
 
-```sh
-npx wrangler versions upload
+### Environment Configuration
+
+Configure Cloudflare via `wrangler.toml`:
+```toml
+name = "typing-app"
+main = "dist/index.js"
+compatibility_date = "2024-12-11"
 ```
 
-You can then promote a version to production after verification or roll it out progressively.
-
-```sh
-npx wrangler versions deploy
-```
-
-## Styling
-
-This template comes with [Tailwind CSS](https://tailwindcss.com/) already configured for a simple default starting experience. You can use whatever CSS framework you prefer.
+Customize the `name`, `main`, and other fields as needed for your deployment.
 
 ---
 
-Built with ❤️ using React Router.
+## Development Commands
+
+| Command | Purpose |
+|---------|---------|
+| `npm run dev` | Start local development server with hot reload |
+| `npm run build` | Build for production (optimize, minify, bundle) |
+| `npm run preview` | Preview production build locally |
+| `npm run check` | Full type check and dry-run deployment |
+| `npm run deploy` | Deploy to Cloudflare Workers |
+| `npm run typecheck` | TypeScript type verification |
+| `npm run cf-typegen` | Generate Cloudflare and React Router types |
+
+---
+
+## Technical Highlights
+
+### Zero Runtime Dependencies (UI Layer)
+This project intentionally avoids third-party UI component libraries and state management frameworks. The architecture demonstrates:
+- Raw React hooks for state management (useReducer, useState, useCallback)
+- CSS-only animations and interactivity (no animation libraries)
+- Tailwind CSS for responsive design without custom component libraries
+- Deep understanding of React fundamentals and browser APIs
+
+**Result:** Minimal bundle size, maximum code clarity, and complete control over behavior.
+
+### Pure Functions & Immutability
+The typing engine uses functional programming principles:
+- Reducer function is a pure, side-effect-free computation
+- State updates produce new objects rather than mutations
+- Character arrays are spread and reconstructed on each keystroke
+- Predictable, debuggable state transitions
+
+### SSR with Edge Deployment
+Combines modern full-stack architecture with global performance:
+- Server-side rendering reduces Time to Interactive (TTI)
+- Cloudflare Workers edge deployment minimizes latency globally
+- Bot detection via isbot prevents unnecessary rendering for crawlers
+
+### Language Diversity
+The included lessons span multiple programming paradigms:
+- Imperative: JavaScript, Python, C, C++
+- Functional: Rust, Go, Swift
+- Object-oriented: Java, C++, Ruby, Kotlin
+- Declarative: CSS, PHP
+- Provides well-rounded practice for polyglot developers
+
+---
+
+## Browser Support
+
+- Chrome 90+
+- Firefox 88+
+- Safari 14+
+- Edge 90+
+
+The application uses modern CSS (CSS Grid, custom properties) and JavaScript (ES2020+). Legacy browser support is not prioritized.
+
+---
+
+## Contributing
+
+Contributions are welcome. Please follow these guidelines:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/your-feature`)
+3. Commit changes with clear messages
+4. Push to your fork and open a Pull Request
+
+Ensure all TypeScript type checks pass and code follows the existing style.
+
+---
+
+## License
+
+This project is open source and available under the MIT License. See LICENSE file for details.
+
+---
+
+## Contact & Attribution
+
+**Author:** David Agustin
+**Repository:** https://github.com/davidagustin/typing-app
+**Live Demo:** https://typing-app.app-production.workers.dev
+
+Built with React Router 7, Cloudflare Workers, and Tailwind CSS.
