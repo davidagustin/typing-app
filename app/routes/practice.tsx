@@ -128,40 +128,32 @@ function splitCharsIntoLines(chars: CharData[]): CharData[][] {
 export default function Practice() {
 	const { lang, project } = useParams();
 	const navigate = useNavigate();
-	const { saveResult } = useLocalStorage();
+	const { saveResult, getCustomLesson } = useLocalStorage();
 	const hiddenInputRef = useRef<HTMLTextAreaElement>(null);
 	const codeContainerRef = useRef<HTMLDivElement>(null);
 	const hasSavedRef = useRef(false);
 
 	// Resolve lesson - from built-in data OR localStorage custom code
 	const lesson = useMemo(() => {
-		if (lang === "custom") {
-			try {
-				const raw =
-					typeof window !== "undefined"
-						? localStorage.getItem("typecode-custom-lesson")
-						: null;
-				if (raw) {
-					const parsed = JSON.parse(raw);
-					return {
-						id: "custom-upload",
-						language: parsed.language || "Custom",
-						languageSlug: "custom",
-						project: parsed.fileName || "Your Code",
-						projectSlug: "upload",
-						description: "Custom uploaded code",
-						fileName: parsed.fileName || "custom.txt",
-						code: parsed.code || "",
-						color: "#f59e0b",
-					};
-				}
-			} catch {
-				// Invalid localStorage data
+		if (lang === "custom" && project) {
+			const custom = getCustomLesson(project);
+			if (custom) {
+				return {
+					id: custom.id,
+					language: custom.language || "Custom",
+					languageSlug: "custom",
+					project: custom.fileName || "Your Code",
+					projectSlug: custom.id,
+					description: "Custom uploaded code",
+					fileName: custom.fileName || "custom.txt",
+					code: custom.code || "",
+					color: "#f59e0b",
+				};
 			}
 			return undefined;
 		}
 		return lang && project ? getLessonBySlug(lang, project) : undefined;
-	}, [lang, project]);
+	}, [lang, project, getCustomLesson]);
 
 	const engine = useTypingEngine(lesson?.code ?? "");
 	const timer = useTimer();

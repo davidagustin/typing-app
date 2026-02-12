@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router";
 import { Header } from "~/components/Header";
+import { useLocalStorage } from "~/hooks/useLocalStorage";
 
 const LANGUAGES = [
 	"JavaScript",
@@ -40,6 +41,7 @@ function cleanCode(raw: string): string {
 
 export default function Custom() {
 	const navigate = useNavigate();
+	const { saveCustomLesson } = useLocalStorage();
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	const [language, setLanguage] = useState("JavaScript");
@@ -72,14 +74,13 @@ export default function Custom() {
 		const cleaned = cleanCode(code);
 		if (!cleaned) return;
 
-		const payload = {
+		const id = saveCustomLesson({
 			code: cleaned,
 			language,
 			fileName: fileName || "custom.txt",
-		};
+		});
 
-		localStorage.setItem("typecode-custom-lesson", JSON.stringify(payload));
-		navigate("/practice/custom/upload");
+		navigate(`/practice/custom/${id}`);
 	}
 
 	return (
