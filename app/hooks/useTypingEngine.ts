@@ -19,18 +19,106 @@ interface TypingState {
 
 type TypingAction = { type: "KEYSTROKE"; key: string } | { type: "RESET" };
 
+// Detect if a line (content after leading whitespace) is a comment
+function isCommentLine(lineContent: string): boolean {
+  const trimmed = lineContent.trim();
+  if (!trimmed) return false;
+
+  // C-style single-line: //
+  if (trimmed.startsWith("//")) return true;
+
+  // Block comment markers: /* and */
+  if (trimmed.startsWith("/*") || trimmed.startsWith("*/")) return true;
+  // Block comment continuation: * (space) or lone *
+  if (/^\*(\s|$)/.test(trimmed)) return true;
+
+  // Hash comments (Python, Ruby, Shell) — but NOT preprocessor directives or Rust attributes
+  if (trimmed.startsWith("#")) {
+    if (trimmed.startsWith("#!") || trimmed.startsWith("#[")) return false;
+    if (
+      /^#\s*(include|define|ifdef|ifndef|endif|else|elif|pragma|undef|error|warning)\b/.test(
+        trimmed,
+      )
+    )
+      return false;
+    return true;
+  }
+
+  // SQL / Lua / Haskell double-dash (but not HTML -->)
+  if (trimmed.startsWith("--") && !trimmed.startsWith("-->")) return true;
+
+  return false;
+}
+
+// Skip leading whitespace and full-line comments, marking them as auto-completed.
+// Returns the index of the first non-skipped character.
+function skipCommentsAndWhitespace(
+  code: string,
+  chars: CharState[],
+  startIndex: number,
+): number {
+  let idx = startIndex;
+
+  while (idx < code.length) {
+    // Skip leading whitespace
+    while (
+      idx < code.length &&
+      (code[idx] === " " || code[idx] === "\t")
+    ) {
+      chars[idx] = { char: chars[idx].char, status: "correct", autoCompleted: true };
+      idx++;
+    }
+
+    if (idx >= code.length) break;
+
+    // Find end of the current line
+    let lineEnd = idx;
+    while (lineEnd < code.length && code[lineEnd] !== "\n") lineEnd++;
+    const lineContent = code.substring(idx, lineEnd);
+
+    if (isCommentLine(lineContent)) {
+      // Auto-complete comment text
+      for (let i = idx; i < lineEnd; i++) {
+        chars[i] = { char: chars[i].char, status: "correct", autoCompleted: true };
+      }
+      // Auto-complete the trailing newline
+      if (lineEnd < code.length && code[lineEnd] === "\n") {
+        chars[lineEnd] = { char: chars[lineEnd].char, status: "correct", autoCompleted: true };
+        idx = lineEnd + 1;
+      } else {
+        idx = lineEnd;
+        break;
+      }
+    } else {
+      break;
+    }
+  }
+
+  return idx;
+}
+
 function initializeChars(code: string): CharState[] {
-  return code.split("").map((char, index) => ({
+  const chars: CharState[] = code.split("").map((char) => ({
     char,
-    status: index === 0 ? "active" : "pending",
+    status: "pending" as const,
   }));
+
+  // Auto-skip any leading comment lines at the start of the code
+  const firstActive = skipCommentsAndWhitespace(code, chars, 0);
+  if (firstActive < chars.length) {
+    chars[firstActive] = { ...chars[firstActive], status: "active" };
+  }
+
+  return chars;
 }
 
 function createInitialState(code: string): TypingState {
+  const chars = initializeChars(code);
+  const activeIdx = chars.findIndex((c) => c.status === "active");
   return {
-    chars: initializeChars(code),
-    currentIndex: 0,
-    isComplete: false,
+    chars,
+    currentIndex: activeIdx >= 0 ? activeIdx : chars.length,
+    isComplete: activeIdx < 0,
     correctKeystrokes: 0,
     incorrectKeystrokes: 0,
     totalKeystrokes: 0,
@@ -118,19 +206,8 @@ function typingReducer(state: TypingState, action: TypingAction): TypingState {
         const newChars = [...chars];
         newChars[currentIndex] = { ...newChars[currentIndex], status: "correct" };
 
-        // Auto-skip leading whitespace on next line
-        let nextIndex = currentIndex + 1;
-        while (
-          nextIndex < code.length &&
-          (code[nextIndex] === " " || code[nextIndex] === "\t")
-        ) {
-          newChars[nextIndex] = {
-            ...newChars[nextIndex],
-            status: "correct",
-            autoCompleted: true,
-          };
-          nextIndex++;
-        }
+        // Auto-skip leading whitespace + comment lines on next line(s)
+        const nextIndex = skipCommentsAndWhitespace(code, newChars, currentIndex + 1);
 
         // Check completion
         if (nextIndex >= code.length) {
@@ -145,7 +222,7 @@ function typingReducer(state: TypingState, action: TypingAction): TypingState {
           };
         }
 
-        // Set next non-whitespace char as active
+        // Set next non-whitespace, non-comment char as active
         newChars[nextIndex] = { ...newChars[nextIndex], status: "active" };
         return {
           ...state,

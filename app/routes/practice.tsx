@@ -46,7 +46,7 @@ function CodeLine({
 			</span>
 
 			{/* Characters */}
-			<span className="flex-1">
+			<span className="flex-1 whitespace-pre">
 				{chars.map((c, i) => {
 					// Newline at end of a line: show dim return symbol
 					if (c.char === "\n") {
@@ -241,8 +241,8 @@ export default function Practice() {
 				return;
 			}
 
-			// Prevent Tab from moving focus
-			if (e.key === "Tab") {
+			// Prevent Tab from moving focus and Enter from inserting into hidden textarea
+			if (e.key === "Tab" || e.key === "Enter") {
 				e.preventDefault();
 			}
 
