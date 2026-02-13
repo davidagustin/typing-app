@@ -1,20 +1,23 @@
 import { useState, useRef, useCallback } from "react";
 
 export function useTimer() {
-  const [seconds, setSeconds] = useState(0);
+  const [elapsedMs, setElapsedMs] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startTimeRef = useRef<number>(0);
 
   const start = useCallback(() => {
     if (intervalRef.current !== null) return;
+    startTimeRef.current = Date.now();
     setIsRunning(true);
     intervalRef.current = setInterval(() => {
-      setSeconds((prev) => prev + 1);
-    }, 1000);
+      setElapsedMs(Date.now() - startTimeRef.current);
+    }, 200);
   }, []);
 
   const stop = useCallback(() => {
     if (intervalRef.current !== null) {
+      setElapsedMs(Date.now() - startTimeRef.current);
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
@@ -27,11 +30,14 @@ export function useTimer() {
       intervalRef.current = null;
     }
     setIsRunning(false);
-    setSeconds(0);
+    setElapsedMs(0);
+    startTimeRef.current = 0;
   }, []);
 
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
+  const seconds = elapsedMs / 1000;
+  const displaySeconds = Math.floor(seconds);
+  const minutes = Math.floor(displaySeconds / 60);
+  const remainingSeconds = displaySeconds % 60;
   const formatted = `${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`;
 
   return {
