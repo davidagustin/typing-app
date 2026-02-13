@@ -76,7 +76,8 @@ function CodeLine({
 			{/* Characters */}
 			<span className="flex-1 whitespace-pre">
 				{chars.map((c, i) => {
-					const syntaxColor = colors[i];
+					// Auto-completed chars (comments) get uniform muted color
+					const syntaxColor = c.autoCompleted ? "#5c6370" : colors[i];
 
 					// Newline at end of a line: show dim return symbol
 					if (c.char === "\n") {
