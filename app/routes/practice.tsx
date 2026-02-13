@@ -201,12 +201,12 @@ export default function Practice() {
 		return lines.length - 1;
 	}, [lines, currentIndex]);
 
-	// Start timer when typing begins
+	// Start timer when typing begins (but not after completion)
 	useEffect(() => {
-		if (hasStarted && !timer.isRunning) {
+		if (hasStarted && !timer.isRunning && !isComplete) {
 			startTimer();
 		}
-	}, [hasStarted, timer.isRunning, startTimer]);
+	}, [hasStarted, timer.isRunning, isComplete, startTimer]);
 
 	// Stop timer and save when complete
 	useEffect(() => {
