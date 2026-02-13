@@ -1,6 +1,6 @@
 # TypeCode
 
-A precision typing practice application for programmers. Type syntactically correct code across 12 languages while real-time metrics track your accuracy, speed, and improvement.
+A precision typing practice application for programmers. Type syntactically correct code across 49 lessons spanning 46 languages while real-time metrics track your accuracy, speed, and improvement.
 
 **Live Demo:** https://typing-app.app-production.workers.dev
 
@@ -17,20 +17,12 @@ A precision typing practice application for programmers. Type syntactically corr
 - Keystroke statistics: WPM, accuracy rate, total/correct/incorrect count
 
 ### Built-In Code Lessons
-12 professional code examples across diverse language ecosystems:
-- JavaScript (REST API with Express.js)
-- TypeScript
-- Python
-- Rust
-- Go
-- Java
-- C
-- C++
-- Ruby
-- Swift
-- CSS
-- Kotlin
-- PHP
+49 professional code examples across 46 diverse language ecosystems:
+- **Core Languages:** JavaScript, TypeScript, Python, Rust, Go, Java, C, C++, C#, Ruby, Swift, Kotlin, PHP, Scala, Haskell, Lua, R, Perl, Dart, Elixir, Clojure, F#, OCaml, Julia, Zig, Nim, Erlang, Groovy, Objective-C, Ada, Pascal
+- **Shell Scripting:** Bash, PowerShell
+- **Markup & Data:** CSS, HTML, SQL
+- **Legacy & Specialized:** Assembly, COBOL, Fortran, Prolog, Scheme, MATLAB
+- **Frontend Frameworks:** React (2 lessons), Angular (2 lessons), Vue (2 lessons)
 
 ### Custom Code Support
 Upload or paste any code file you want to practice:
@@ -43,20 +35,22 @@ Upload or paste any code file you want to practice:
 ### Smart Auto-Completion
 Language-aware handling of comments and indentation:
 - Leading whitespace automatically skipped (tab/space indentation)
-- Full-line comments auto-completed (supports //, #, --, /* */)
+- Inline and full-line comments auto-completed (supports //, #, --, /* */)
+- Comment detection uses space-after-marker heuristic to avoid false positives on CSS custom properties (--var), HTML IDs (#selector), C pointer dereferences (*ptr), and Ruby modulo operators (%)
 - Comment detection excludes C preprocessor directives, Rust attributes, and shell shebangs
 - Blank lines intelligently skipped
 - Transparent auto-completion highlighted in UI
 
 ### Performance Tracking
-- Real-time statistics during practice sessions
-- Results screen with accuracy and speed metrics
+- Real-time statistics during practice sessions with precise WPM timer (200ms updates using Date.now())
+- Dismissable results modal with "Review Code" button for post-session analysis
 - Performance rating system based on accuracy thresholds
 - Local storage persistence for session history (no backend required)
 
 ### Responsive Dark Theme
 - Optimized for both desktop and mobile environments
 - Monospace font rendering for accurate code display
+- **Syntax Highlighting** with One Dark theme colors (keywords purple, strings green, functions blue, types yellow, operators cyan) — colors reveal per-word after typing correctly
 - Custom CSS animations: blinking cursor, fade-in overlays, smooth transitions
 - High contrast color scheme for long typing sessions
 
@@ -95,8 +89,8 @@ Zero external UI libraries, state management libraries, or form libraries. Total
 app/
 ├── routes/
 │   ├── home.tsx          # Landing page with lesson selection
-│   ├── lessons.tsx       # Lesson grid and filtering
-│   ├── custom.tsx        # Custom code upload and management
+│   ├── lessons.tsx       # Lesson browsing with search, language filter, grid/table view toggle, sort options
+│   ├── custom.tsx        # Custom code upload and management with multi-file support
 │   └── practice.tsx      # Main typing practice interface
 ├── components/
 │   ├── Header.tsx        # Navigation and branding
@@ -107,8 +101,10 @@ app/
 │   ├── useTypingEngine.ts     # Core typing state machine
 │   ├── useTimer.ts            # Elapsed time tracking
 │   └── useLocalStorage.ts     # Persistent lesson storage
+├── utils/
+│   └── syntaxHighlight.ts     # Token-based syntax highlighting engine
 ├── data/
-│   └── lessons.ts        # 12 built-in lessons with metadata
+│   └── lessons.ts        # 49 built-in lessons with metadata
 ├── entry.server.tsx      # SSR entry point for Cloudflare Workers
 ├── root.tsx              # Root layout and app shell
 └── app.css               # Global styles and animations
@@ -145,29 +141,37 @@ Each keystroke triggers a deterministic state transition:
 **Engineering benefit:** Pure reducer functions are trivial to unit test, easy to reason about, and naturally support undo/redo.
 
 #### Language-Aware Comment Detection
-The engine detects and auto-skips comment lines with language-specific logic:
+The engine detects and auto-skips comments (both full-line and inline) with language-specific logic and space-after-marker heuristic to avoid false positives:
 
 ```typescript
-function isCommentLine(lineContent: string): boolean {
-  const trimmed = lineContent.trim();
-  // C-style: //
-  if (trimmed.startsWith("//")) return true;
+function isComment(text: string): boolean {
+  const trimmed = text.trim();
+  // C-style: // (space after marker required)
+  if (/^\/\/\s/.test(trimmed)) return true;
   // Block comments: /* */ or * continuation
   if (trimmed.startsWith("/*") || trimmed.startsWith("*/")) return true;
-  // Hash (Python, Ruby, Shell) - excludes #! shebangs and #[ Rust attributes
+  if (/^\*\s/.test(trimmed)) return true; // Continuation line
+  // Hash (Python, Ruby, Shell) - excludes #! shebangs, #[ Rust attributes, CSS #selectors
   if (trimmed.startsWith("#")) {
     if (trimmed.startsWith("#!") || trimmed.startsWith("#[")) return false;
     // Exclude C preprocessor directives
     if (/^#\s*(include|define|ifdef|ifndef|endif)/.test(trimmed)) return false;
+    // Require space after # to avoid CSS selectors
+    if (!/^#\s/.test(trimmed)) return false;
     return true;
   }
-  // SQL / Lua / Haskell: -- (but not HTML -->)
-  if (trimmed.startsWith("--") && !trimmed.startsWith("-->")) return true;
+  // SQL / Lua / Haskell: -- (but not HTML --> or CSS custom properties)
+  if (trimmed.startsWith("--")) {
+    if (trimmed.startsWith("-->")) return false;
+    // Require space after -- to avoid CSS custom properties (--var)
+    if (!/^--\s/.test(trimmed)) return false;
+    return true;
+  }
   return false;
 }
 ```
 
-This approach handles the complexity of multiple language syntax rules in a single, maintainable function.
+This approach handles the complexity of multiple language syntax rules while avoiding false positives on CSS custom properties (--var), HTML IDs (#selector), C pointer dereferences (*ptr), and Ruby modulo operators (%).
 
 #### Separation of Concerns via Custom Hooks
 Three focused custom hooks encapsulate distinct responsibilities:
@@ -350,12 +354,16 @@ Combines modern full-stack architecture with global performance:
 - Bot detection via isbot prevents unnecessary rendering for crawlers
 
 ### Language Diversity
-The included lessons span multiple programming paradigms:
-- Imperative: JavaScript, Python, C, C++
-- Functional: Rust, Go, Swift
-- Object-oriented: Java, C++, Ruby, Kotlin
-- Declarative: CSS, PHP
-- Provides well-rounded practice for polyglot developers
+The included 49 lessons span multiple programming paradigms across 46 languages:
+- **Imperative:** JavaScript, TypeScript, Python, C, C++, C#, Go, Rust, Ruby, PHP, Perl, Bash, PowerShell
+- **Functional:** Haskell, F#, OCaml, Elixir, Clojure, Scheme, Erlang, Scala
+- **Object-Oriented:** Java, Kotlin, Swift, Objective-C, Groovy, Ruby, C++, C#, Scala
+- **Declarative:** CSS, HTML, SQL, Prolog
+- **Scientific/Numerical:** R, Julia, MATLAB, Fortran
+- **Systems/Low-Level:** C, C++, Rust, Assembly, Zig, Nim, Ada, Pascal
+- **Modern Frontend Frameworks:** React (2 lessons), Angular (2 lessons), Vue (2 lessons)
+- **Legacy/Specialized:** COBOL, Fortran, Assembly, Prolog, Scheme, Ada, Pascal, Lua
+- Provides exceptionally well-rounded practice for polyglot developers across decades of programming language evolution
 
 ---
 
