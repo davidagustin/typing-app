@@ -89,9 +89,8 @@ function detectInlineComment(code: string, startIndex: number): number | null {
   // Block comment start: /*
   if (trimmed.startsWith("/*")) return lineEnd;
 
-  // Hash comments: # (excluding preprocessor, shebang, Rust attributes)
-  if (trimmed.startsWith("#")) {
-    if (trimmed.startsWith("#!") || trimmed.startsWith("#[")) return null;
+  // Hash comments: # followed by a space (excludes #{interpolation}, #!, #[, etc.)
+  if (/^#\s/.test(trimmed)) {
     if (
       /^#\s*(include|define|ifdef|ifndef|endif|else|elif|pragma|undef|error|warning)\b/.test(
         trimmed,
@@ -107,11 +106,9 @@ function detectInlineComment(code: string, startIndex: number): number | null {
   // HTML/XML: <!--
   if (trimmed.startsWith("<!--")) return lineEnd;
 
-  // MATLAB, LaTeX, Erlang: %
-  if (trimmed.startsWith("%")) return lineEnd;
-
-  // Lisp, Clojure, Assembly: ;
-  if (trimmed.startsWith(";")) return lineEnd;
+  // NOTE: %, ;, and bare # are intentionally excluded from inline detection
+  // because they are common operators/terminators in many languages.
+  // They are only matched for full-line comment detection (isCommentLine).
 
   return null;
 }
