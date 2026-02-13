@@ -139,7 +139,7 @@ function getCharStyle(
 ): { color: string; opacity?: number } | undefined {
 	switch (status) {
 		case "pending":
-			return { color: syntaxColor, opacity: 0.4 };
+			return { color: "#475569" };
 		case "correct":
 			// Only reveal syntax color once the full word is typed
 			return wordDone ? { color: syntaxColor } : { color: "#e2e8f0" };
