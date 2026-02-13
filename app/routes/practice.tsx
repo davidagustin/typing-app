@@ -6,6 +6,7 @@ import { ResultsScreen } from "~/components/ResultsScreen";
 import { getLessonBySlug } from "~/data/lessons";
 import { useTypingEngine } from "~/hooks/useTypingEngine";
 import { useTimer } from "~/hooks/useTimer";
+import { getSyntaxColors } from "~/utils/syntaxHighlight";
 import { useLocalStorage } from "~/hooks/useLocalStorage";
 
 // ---------------------------------------------------------------------------
@@ -21,10 +22,12 @@ interface CharData {
 function CodeLine({
 	lineNumber,
 	chars,
+	colors,
 	isActiveLine,
 }: {
 	lineNumber: number;
 	chars: CharData[];
+	colors: string[];
 	isActiveLine: boolean;
 }) {
 	const lineRef = useRef<HTMLDivElement>(null);
@@ -48,6 +51,8 @@ function CodeLine({
 			{/* Characters */}
 			<span className="flex-1 whitespace-pre">
 				{chars.map((c, i) => {
+					const syntaxColor = colors[i];
+
 					// Newline at end of a line: show dim return symbol
 					if (c.char === "\n") {
 						return (
@@ -66,7 +71,7 @@ function CodeLine({
 							<span
 								key={i}
 								className={getCharClass(c.status)}
-								style={{ display: "inline-block", width: "4ch" }}
+								style={getCharStyle(c.status, syntaxColor)}
 							>
 								{" "}
 							</span>
@@ -75,7 +80,11 @@ function CodeLine({
 
 					// Regular character (including spaces)
 					return (
-						<span key={i} className={getCharClass(c.status)}>
+						<span
+							key={i}
+							className={getCharClass(c.status)}
+							style={getCharStyle(c.status, syntaxColor)}
+						>
 							{c.char}
 						</span>
 					);
@@ -95,6 +104,22 @@ function getCharClass(status: CharData["status"]): string {
 			return "char-incorrect";
 		case "active":
 			return "char-active";
+	}
+}
+
+function getCharStyle(
+	status: CharData["status"],
+	syntaxColor: string,
+): { color: string; opacity?: number } | undefined {
+	switch (status) {
+		case "pending":
+			return { color: syntaxColor, opacity: 0.4 };
+		case "correct":
+			return { color: syntaxColor };
+		case "incorrect":
+			return undefined; // CSS handles red + background
+		case "active":
+			return undefined; // CSS handles amber cursor highlight
 	}
 }
 
@@ -201,6 +226,23 @@ export default function Practice() {
 		}
 		return lines.length - 1;
 	}, [lines, currentIndex]);
+
+	// Syntax highlighting: compute color per character from the source code
+	const syntaxColors = useMemo(
+		() => getSyntaxColors(lesson?.code ?? ""),
+		[lesson?.code],
+	);
+
+	// Split the flat color array into per-line slices matching the char lines
+	const lineColors = useMemo(() => {
+		const result: string[][] = [];
+		let offset = 0;
+		for (const line of lines) {
+			result.push(syntaxColors.slice(offset, offset + line.length));
+			offset += line.length;
+		}
+		return result;
+	}, [lines, syntaxColors]);
 
 	// Start timer when typing begins (but not after completion)
 	useEffect(() => {
@@ -342,6 +384,7 @@ export default function Practice() {
 							key={lineIdx}
 							lineNumber={lineIdx + 1}
 							chars={lineChars}
+							colors={lineColors[lineIdx] || []}
 							isActiveLine={lineIdx === activeLineIndex}
 						/>
 					))}

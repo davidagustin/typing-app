@@ -76,11 +76,11 @@ button {
 /* ---- Typing character states ---- */
 
 .char-pending {
-	color: var(--color-text-muted);
+	/* color set via inline style from syntax highlighter */
 }
 
 .char-correct {
-	color: var(--color-text-primary);
+	/* color set via inline style from syntax highlighter */
 }
 
 .char-incorrect {
