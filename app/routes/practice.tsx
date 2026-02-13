@@ -41,6 +41,31 @@ function CodeLine({
 		}
 	}, [isActiveLine]);
 
+	// Determine which chars belong to a fully-typed word.
+	// Syntax color only reveals once every character in a word token is correct.
+	const wordDone = useMemo(() => {
+		const result = new Array<boolean>(chars.length).fill(false);
+		let i = 0;
+		while (i < chars.length) {
+			// Word tokens: contiguous identifier characters
+			if (/[a-zA-Z_0-9]/.test(chars[i].char)) {
+				const start = i;
+				while (i < chars.length && /[a-zA-Z_0-9]/.test(chars[i].char)) i++;
+				const allCorrect = chars
+					.slice(start, i)
+					.every((c) => c.status === "correct");
+				if (allCorrect) {
+					for (let j = start; j < i; j++) result[j] = true;
+				}
+			} else {
+				// Non-word chars (operators, punctuation, spaces) reveal immediately
+				if (chars[i].status === "correct") result[i] = true;
+				i++;
+			}
+		}
+		return result;
+	}, [chars]);
+
 	return (
 		<div ref={lineRef} className="flex">
 			{/* Line number */}
@@ -71,7 +96,7 @@ function CodeLine({
 							<span
 								key={i}
 								className={getCharClass(c.status)}
-								style={getCharStyle(c.status, syntaxColor)}
+								style={getCharStyle(c.status, syntaxColor, wordDone[i])}
 							>
 								{" "}
 							</span>
@@ -83,7 +108,7 @@ function CodeLine({
 						<span
 							key={i}
 							className={getCharClass(c.status)}
-							style={getCharStyle(c.status, syntaxColor)}
+							style={getCharStyle(c.status, syntaxColor, wordDone[i])}
 						>
 							{c.char}
 						</span>
@@ -110,12 +135,14 @@ function getCharClass(status: CharData["status"]): string {
 function getCharStyle(
 	status: CharData["status"],
 	syntaxColor: string,
+	wordDone: boolean,
 ): { color: string; opacity?: number } | undefined {
 	switch (status) {
 		case "pending":
 			return { color: syntaxColor, opacity: 0.4 };
 		case "correct":
-			return { color: syntaxColor };
+			// Only reveal syntax color once the full word is typed
+			return wordDone ? { color: syntaxColor } : { color: "#e2e8f0" };
 		case "incorrect":
 			return undefined; // CSS handles red + background
 		case "active":
