@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate } from "react-router";
-import { useEffect, useRef, useCallback, useMemo } from "react";
+import { useEffect, useRef, useCallback, useMemo, useState } from "react";
 import { Header } from "~/components/Header";
 import { StatsBar } from "~/components/StatsBar";
 import { ResultsScreen } from "~/components/ResultsScreen";
@@ -132,6 +132,7 @@ export default function Practice() {
 	const hiddenInputRef = useRef<HTMLTextAreaElement>(null);
 	const codeContainerRef = useRef<HTMLDivElement>(null);
 	const hasSavedRef = useRef(false);
+	const [showResults, setShowResults] = useState(false);
 
 	// Resolve lesson - from built-in data OR localStorage custom code
 	const lesson = useMemo(() => {
@@ -215,6 +216,7 @@ export default function Practice() {
 		}
 		if (isComplete && !hasSavedRef.current && lesson) {
 			hasSavedRef.current = true;
+			setShowResults(true);
 			saveResult({
 				lessonId: lesson.id,
 				wpm,
@@ -259,6 +261,7 @@ export default function Practice() {
 	// Reset handler
 	const handleRestart = useCallback(() => {
 		hasSavedRef.current = false;
+		setShowResults(false);
 		resetEngine();
 		resetTimer();
 		hiddenInputRef.current?.focus();
@@ -267,6 +270,10 @@ export default function Practice() {
 	const handleBack = useCallback(() => {
 		navigate("/lessons");
 	}, [navigate]);
+
+	const handleDismissResults = useCallback(() => {
+		setShowResults(false);
+	}, []);
 
 	// 404-style not found
 	if (!lesson) {
@@ -370,7 +377,7 @@ export default function Practice() {
 			/>
 
 			{/* Results overlay */}
-			{isComplete && (
+			{showResults && (
 				<ResultsScreen
 					wpm={wpm}
 					accuracy={accuracy}
@@ -381,7 +388,19 @@ export default function Practice() {
 					lessonName={`${lesson.language} - ${lesson.project}`}
 					onRestart={handleRestart}
 					onBack={handleBack}
+					onDismiss={handleDismissResults}
 				/>
+			)}
+
+			{/* Show results button when modal is dismissed */}
+			{isComplete && !showResults && (
+				<button
+					type="button"
+					onClick={() => setShowResults(true)}
+					className="fixed bottom-20 right-6 z-40 rounded-lg bg-[#f59e0b] px-4 py-2.5 text-sm font-semibold text-[#0a0a0f] shadow-lg shadow-black/30 transition-all hover:bg-[#d97706]"
+				>
+					Show Results
+				</button>
 			)}
 		</div>
 	);

@@ -8,6 +8,7 @@ interface ResultsScreenProps {
 	lessonName: string;
 	onRestart: () => void;
 	onBack: () => void;
+	onDismiss: () => void;
 }
 
 function getRating(wpm: number): { label: string; color: string } {
@@ -27,12 +28,19 @@ export function ResultsScreen({
 	lessonName,
 	onRestart,
 	onBack,
+	onDismiss,
 }: ResultsScreenProps) {
 	const rating = getRating(wpm);
 
 	return (
-		<div className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-			<div className="animate-fade-in-scale w-full max-w-md rounded-xl border border-[#1e1e2e] bg-[#111118] p-8 shadow-2xl shadow-black/40">
+		<div
+			className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+			onClick={onDismiss}
+		>
+			<div
+				className="animate-fade-in-scale w-full max-w-md rounded-xl border border-[#1e1e2e] bg-[#111118] p-8 shadow-2xl shadow-black/40"
+				onClick={(e) => e.stopPropagation()}
+			>
 				{/* Lesson name */}
 				<p className="text-center text-sm text-[#475569]">{lessonName}</p>
 
@@ -99,20 +107,29 @@ export function ResultsScreen({
 				</p>
 
 				{/* Actions */}
-				<div className="mt-6 flex gap-3">
+				<div className="mt-6 flex flex-col gap-3">
+					<div className="flex gap-3">
+						<button
+							type="button"
+							onClick={onBack}
+							className="flex-1 rounded-lg border border-[#1e1e2e] bg-transparent px-4 py-2.5 text-sm font-medium text-[#94a3b8] hover:border-[#2a2a3e] hover:text-[#e2e8f0] cursor-pointer"
+						>
+							Back to Lessons
+						</button>
+						<button
+							type="button"
+							onClick={onRestart}
+							className="flex-1 rounded-lg bg-[#f59e0b] px-4 py-2.5 text-sm font-semibold text-[#0a0a0f] hover:bg-[#d97706] cursor-pointer"
+						>
+							Try Again
+						</button>
+					</div>
 					<button
 						type="button"
-						onClick={onBack}
-						className="flex-1 rounded-lg border border-[#1e1e2e] bg-transparent px-4 py-2.5 text-sm font-medium text-[#94a3b8] hover:border-[#2a2a3e] hover:text-[#e2e8f0] cursor-pointer"
+						onClick={onDismiss}
+						className="w-full rounded-lg border border-[#1e1e2e] bg-transparent px-4 py-2 text-sm text-[#475569] hover:border-[#2a2a3e] hover:text-[#94a3b8] cursor-pointer"
 					>
-						Back to Lessons
-					</button>
-					<button
-						type="button"
-						onClick={onRestart}
-						className="flex-1 rounded-lg bg-[#f59e0b] px-4 py-2.5 text-sm font-semibold text-[#0a0a0f] hover:bg-[#d97706] cursor-pointer"
-					>
-						Try Again
+						Review Code
 					</button>
 				</div>
 			</div>
