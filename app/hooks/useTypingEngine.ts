@@ -19,7 +19,10 @@ interface TypingState {
 
 type TypingAction = { type: "KEYSTROKE"; key: string } | { type: "RESET" };
 
-// Detect if a line (content after leading whitespace) is a comment
+// Detect if a line (content after leading whitespace) is a comment.
+// Uses conservative heuristics — requires space after ambiguous markers
+// to avoid false positives on CSS custom properties, selectors, C pointer
+// dereferences, Ruby interpolation, etc.
 function isCommentLine(lineContent: string): boolean {
   const trimmed = lineContent.trim();
   if (!trimmed) return false;
@@ -32,8 +35,10 @@ function isCommentLine(lineContent: string): boolean {
   // Block comment continuation: * (space) or lone *
   if (/^\*(\s|$)/.test(trimmed)) return true;
 
-  // Hash comments (Python, Ruby, Shell) — but NOT preprocessor directives or Rust attributes
-  if (trimmed.startsWith("#")) {
+  // Hash comments (Python, Ruby, Shell):
+  // Require "# " (space) to avoid CSS selectors (#header), hex colors (#fff),
+  // Ruby interpolation (#{var}), and preprocessor directives.
+  if (/^#\s/.test(trimmed)) {
     if (trimmed.startsWith("#!") || trimmed.startsWith("#[")) return false;
     if (
       /^#\s*(include|define|ifdef|ifndef|endif|else|elif|pragma|undef|error|warning)\b/.test(
@@ -44,17 +49,20 @@ function isCommentLine(lineContent: string): boolean {
     return true;
   }
 
-  // SQL / Lua / Haskell double-dash (but not HTML -->)
-  if (trimmed.startsWith("--") && !trimmed.startsWith("-->")) return true;
+  // SQL / Lua / Haskell / Ada double-dash:
+  // Require "-- " (space) to avoid CSS custom properties (--color-primary).
+  if (/^--\s/.test(trimmed)) return true;
 
   // HTML/XML comments
   if (trimmed.startsWith("<!--") || trimmed.startsWith("-->")) return true;
 
   // MATLAB, LaTeX, Erlang, Prolog: % comments
-  if (trimmed.startsWith("%")) return true;
+  // Require "% " (space) to avoid Ruby %w[...], %q{...} literals.
+  if (/^%\s/.test(trimmed)) return true;
 
-  // OCaml, Pascal block comments
-  if (trimmed.startsWith("(*") || trimmed.startsWith("*)")) return true;
+  // OCaml, Pascal block comments:
+  // Require "(* " (space) to avoid C pointer dereferences (*ptr).
+  if (/^\(\*\s/.test(trimmed) || trimmed.startsWith("*)")) return true;
 
   // Haskell block comments
   if (trimmed.startsWith("{-") || trimmed.startsWith("-}")) return true;
@@ -100,14 +108,14 @@ function detectInlineComment(code: string, startIndex: number): number | null {
     return lineEnd;
   }
 
-  // Double-dash: -- (but not -->)
-  if (trimmed.startsWith("--") && !trimmed.startsWith("-->")) return lineEnd;
+  // Double-dash: require "-- " (space) to avoid CSS --custom-properties and --flags
+  if (/^--\s/.test(trimmed)) return lineEnd;
 
   // HTML/XML: <!--
   if (trimmed.startsWith("<!--")) return lineEnd;
 
-  // NOTE: %, ;, and bare # are intentionally excluded from inline detection
-  // because they are common operators/terminators in many languages.
+  // NOTE: %, ;, bare #, and bare -- are intentionally excluded from inline
+  // detection because they are common operators/terminators in many languages.
   // They are only matched for full-line comment detection (isCommentLine).
 
   return null;
