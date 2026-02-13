@@ -47,7 +47,73 @@ function isCommentLine(lineContent: string): boolean {
   // SQL / Lua / Haskell double-dash (but not HTML -->)
   if (trimmed.startsWith("--") && !trimmed.startsWith("-->")) return true;
 
+  // HTML/XML comments
+  if (trimmed.startsWith("<!--") || trimmed.startsWith("-->")) return true;
+
+  // MATLAB, LaTeX, Erlang, Prolog: % comments
+  if (trimmed.startsWith("%")) return true;
+
+  // OCaml, Pascal block comments
+  if (trimmed.startsWith("(*") || trimmed.startsWith("*)")) return true;
+
+  // Haskell block comments
+  if (trimmed.startsWith("{-") || trimmed.startsWith("-}")) return true;
+
+  // Lisp, Clojure, Assembly: ;; (double semicolons)
+  if (trimmed.startsWith(";;")) return true;
+
+  // Batch/CMD: REM
+  if (/^REM(\s|$)/i.test(trimmed)) return true;
+
   return false;
+}
+
+// Detect if remaining text on the current line from startIndex is an inline comment.
+// Requires leading whitespace before the comment marker to avoid false positives.
+// Returns the end-of-line index to auto-complete to, or null if not a comment.
+function detectInlineComment(code: string, startIndex: number): number | null {
+  let lineEnd = startIndex;
+  while (lineEnd < code.length && code[lineEnd] !== "\n") lineEnd++;
+
+  const remaining = code.substring(startIndex, lineEnd);
+
+  // Must start with whitespace (prevents matching URLs, operators, etc.)
+  if (!/^\s/.test(remaining)) return null;
+
+  const trimmed = remaining.trim();
+  if (!trimmed) return null;
+
+  // C-style: //
+  if (trimmed.startsWith("//")) return lineEnd;
+
+  // Block comment start: /*
+  if (trimmed.startsWith("/*")) return lineEnd;
+
+  // Hash comments: # (excluding preprocessor, shebang, Rust attributes)
+  if (trimmed.startsWith("#")) {
+    if (trimmed.startsWith("#!") || trimmed.startsWith("#[")) return null;
+    if (
+      /^#\s*(include|define|ifdef|ifndef|endif|else|elif|pragma|undef|error|warning)\b/.test(
+        trimmed,
+      )
+    )
+      return null;
+    return lineEnd;
+  }
+
+  // Double-dash: -- (but not -->)
+  if (trimmed.startsWith("--") && !trimmed.startsWith("-->")) return lineEnd;
+
+  // HTML/XML: <!--
+  if (trimmed.startsWith("<!--")) return lineEnd;
+
+  // MATLAB, LaTeX, Erlang: %
+  if (trimmed.startsWith("%")) return lineEnd;
+
+  // Lisp, Clojure, Assembly: ;
+  if (trimmed.startsWith(";")) return lineEnd;
+
+  return null;
 }
 
 // Skip leading whitespace and full-line comments, marking them as auto-completed.
@@ -277,7 +343,7 @@ function typingReducer(state: TypingState, action: TypingAction): TypingState {
 
         if (isCorrect) {
           newChars[currentIndex] = { ...newChars[currentIndex], status: "correct" };
-          const nextIndex = currentIndex + 1;
+          let nextIndex = currentIndex + 1;
 
           if (nextIndex >= code.length) {
             return {
@@ -289,6 +355,26 @@ function typingReducer(state: TypingState, action: TypingAction): TypingState {
               totalKeystrokes: state.totalKeystrokes + 1,
               hasStarted,
             };
+          }
+
+          // Auto-complete inline comments (e.g., code // comment)
+          const inlineEnd = detectInlineComment(code, nextIndex);
+          if (inlineEnd !== null) {
+            for (let i = nextIndex; i < inlineEnd; i++) {
+              newChars[i] = { char: newChars[i].char, status: "correct", autoCompleted: true };
+            }
+            nextIndex = inlineEnd;
+            if (nextIndex >= code.length) {
+              return {
+                ...state,
+                chars: newChars,
+                currentIndex: nextIndex,
+                isComplete: true,
+                correctKeystrokes: state.correctKeystrokes + 1,
+                totalKeystrokes: state.totalKeystrokes + 1,
+                hasStarted,
+              };
+            }
           }
 
           newChars[nextIndex] = { ...newChars[nextIndex], status: "active" };
