@@ -3203,6 +3203,703 @@ end.`,
     end
 end`,
   },
+  {
+    id: "react-usereducer",
+    language: "React",
+    languageSlug: "react",
+    project: "Todo App",
+    projectSlug: "todoapp",
+    description: "useReducer + Context todo list with TypeScript",
+    fileName: "TodoApp.tsx",
+    color: "#61dafb",
+    code: `import { useReducer, useContext, createContext, ReactNode } from "react"
+
+interface Todo {
+  id: number
+  text: string
+  completed: boolean
+}
+
+type Action =
+  | { type: "ADD"; text: string }
+  | { type: "TOGGLE"; id: number }
+  | { type: "DELETE"; id: number }
+  | { type: "CLEAR_COMPLETED" }
+
+function todoReducer(state: Todo[], action: Action): Todo[] {
+  switch (action.type) {
+    case "ADD":
+      return [...state, { id: Date.now(), text: action.text, completed: false }]
+    case "TOGGLE":
+      return state.map((t) =>
+        t.id === action.id ? { ...t, completed: !t.completed } : t
+      )
+    case "DELETE":
+      return state.filter((t) => t.id !== action.id)
+    case "CLEAR_COMPLETED":
+      return state.filter((t) => !t.completed)
+  }
+}
+
+const TodoContext = createContext<{
+  todos: Todo[]
+  dispatch: React.Dispatch<Action>
+} | null>(null)
+
+function useTodos() {
+  const ctx = useContext(TodoContext)
+  if (!ctx) throw new Error("useTodos must be used within TodoProvider")
+  return ctx
+}
+
+function TodoProvider({ children }: { children: ReactNode }) {
+  const [todos, dispatch] = useReducer(todoReducer, [])
+  return (
+    <TodoContext.Provider value={{ todos, dispatch }}>
+      {children}
+    </TodoContext.Provider>
+  )
+}
+
+function TodoItem({ todo }: { todo: Todo }) {
+  const { dispatch } = useTodos()
+  return (
+    <li className={todo.completed ? "completed" : ""}>
+      <span onClick={() => dispatch({ type: "TOGGLE", id: todo.id })}>
+        {todo.text}
+      </span>
+      <button onClick={() => dispatch({ type: "DELETE", id: todo.id })}>
+        Delete
+      </button>
+    </li>
+  )
+}
+
+function TodoList() {
+  const { todos, dispatch } = useTodos()
+  const remaining = todos.filter((t) => !t.completed).length
+
+  return (
+    <div>
+      <ul>
+        {todos.map((todo) => (
+          <TodoItem key={todo.id} todo={todo} />
+        ))}
+      </ul>
+      <p>{remaining} items remaining</p>
+      <button onClick={() => dispatch({ type: "CLEAR_COMPLETED" })}>
+        Clear completed
+      </button>
+    </div>
+  )
+}
+
+export default function App() {
+  return (
+    <TodoProvider>
+      <h1>Todo App</h1>
+      <TodoList />
+    </TodoProvider>
+  )
+}`,
+  },
+  {
+    id: "react-hooks",
+    language: "React",
+    languageSlug: "react",
+    project: "Custom Hooks",
+    projectSlug: "hooks",
+    description: "Reusable custom hooks for data fetching and debounce",
+    fileName: "hooks.ts",
+    color: "#61dafb",
+    code: `import { useState, useEffect, useRef, useCallback } from "react"
+
+interface FetchState<T> {
+  data: T | null
+  loading: boolean
+  error: string | null
+}
+
+export function useFetch<T>(url: string): FetchState<T> {
+  const [state, setState] = useState<FetchState<T>>({
+    data: null,
+    loading: true,
+    error: null,
+  })
+
+  useEffect(() => {
+    const controller = new AbortController()
+    setState((prev) => ({ ...prev, loading: true, error: null }))
+
+    fetch(url, { signal: controller.signal })
+      .then((res) => {
+        if (!res.ok) throw new Error(res.statusText)
+        return res.json()
+      })
+      .then((data) => setState({ data, loading: false, error: null }))
+      .catch((err) => {
+        if (err.name !== "AbortError") {
+          setState({ data: null, loading: false, error: err.message })
+        }
+      })
+
+    return () => controller.abort()
+  }, [url])
+
+  return state
+}
+
+export function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay)
+    return () => clearTimeout(timer)
+  }, [value, delay])
+
+  return debouncedValue
+}
+
+export function useLocalStorage<T>(key: string, initialValue: T) {
+  const [storedValue, setStoredValue] = useState<T>(() => {
+    try {
+      const item = window.localStorage.getItem(key)
+      return item ? JSON.parse(item) : initialValue
+    } catch {
+      return initialValue
+    }
+  })
+
+  const setValue = useCallback(
+    (value: T | ((prev: T) => T)) => {
+      const valueToStore =
+        value instanceof Function ? value(storedValue) : value
+      setStoredValue(valueToStore)
+      window.localStorage.setItem(key, JSON.stringify(valueToStore))
+    },
+    [key, storedValue]
+  )
+
+  return [storedValue, setValue] as const
+}
+
+export function usePrevious<T>(value: T): T | undefined {
+  const ref = useRef<T | undefined>(undefined)
+
+  useEffect(() => {
+    ref.current = value
+  }, [value])
+
+  return ref.current
+}
+
+export function useInterval(callback: () => void, delay: number | null) {
+  const savedCallback = useRef(callback)
+
+  useEffect(() => {
+    savedCallback.current = callback
+  }, [callback])
+
+  useEffect(() => {
+    if (delay === null) return
+    const id = setInterval(() => savedCallback.current(), delay)
+    return () => clearInterval(id)
+  }, [delay])
+}`,
+  },
+  {
+    id: "angular-service",
+    language: "Angular",
+    languageSlug: "angular",
+    project: "Auth Service",
+    projectSlug: "authservice",
+    description: "Injectable authentication service with RxJS observables",
+    fileName: "auth.service.ts",
+    color: "#dd0031",
+    code: `import { Injectable } from "@angular/core"
+import { HttpClient, HttpHeaders } from "@angular/common/http"
+import { BehaviorSubject, Observable, throwError } from "rxjs"
+import { catchError, map, tap } from "rxjs/operators"
+import { Router } from "@angular/router"
+
+interface User {
+  id: string
+  email: string
+  name: string
+  role: "admin" | "user"
+}
+
+interface AuthResponse {
+  user: User
+  token: string
+  refreshToken: string
+}
+
+@Injectable({ providedIn: "root" })
+export class AuthService {
+  private currentUserSubject = new BehaviorSubject<User | null>(null)
+  private tokenKey = "auth_token"
+
+  currentUser$ = this.currentUserSubject.asObservable()
+  isAuthenticated$ = this.currentUser$.pipe(map((user) => !!user))
+
+  constructor(
+    private http: HttpClient,
+    private router: Router
+  ) {
+    this.loadStoredUser()
+  }
+
+  private loadStoredUser(): void {
+    const token = localStorage.getItem(this.tokenKey)
+    if (token && !this.isTokenExpired(token)) {
+      this.fetchCurrentUser().subscribe()
+    }
+  }
+
+  private isTokenExpired(token: string): boolean {
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]))
+      return payload.exp * 1000 < Date.now()
+    } catch {
+      return true
+    }
+  }
+
+  login(email: string, password: string): Observable<User> {
+    return this.http
+      .post<AuthResponse>("/api/auth/login", { email, password })
+      .pipe(
+        tap((response) => {
+          localStorage.setItem(this.tokenKey, response.token)
+          this.currentUserSubject.next(response.user)
+        }),
+        map((response) => response.user),
+        catchError((error) => {
+          const message = error.error?.message || "Login failed"
+          return throwError(() => new Error(message))
+        })
+      )
+  }
+
+  logout(): void {
+    localStorage.removeItem(this.tokenKey)
+    this.currentUserSubject.next(null)
+    this.router.navigate(["/login"])
+  }
+
+  private fetchCurrentUser(): Observable<User> {
+    return this.http.get<User>("/api/auth/me").pipe(
+      tap((user) => this.currentUserSubject.next(user)),
+      catchError((error) => {
+        this.logout()
+        return throwError(() => error)
+      })
+    )
+  }
+
+  getAuthHeaders(): HttpHeaders {
+    const token = localStorage.getItem(this.tokenKey)
+    return new HttpHeaders({
+      Authorization: token ? \`Bearer \${token}\` : "",
+      "Content-Type": "application/json",
+    })
+  }
+
+  hasRole(role: string): Observable<boolean> {
+    return this.currentUser$.pipe(
+      map((user) => user?.role === role)
+    )
+  }
+}`,
+  },
+  {
+    id: "angular-component",
+    language: "Angular",
+    languageSlug: "angular",
+    project: "Data Table",
+    projectSlug: "datatable",
+    description: "Sortable, filterable data table component with signals",
+    fileName: "data-table.component.ts",
+    color: "#dd0031",
+    code: `import { Component, computed, input, output, signal } from "@angular/core"
+import { FormsModule } from "@angular/forms"
+import { CommonModule } from "@angular/common"
+
+interface Column<T> {
+  key: keyof T & string
+  label: string
+  sortable?: boolean
+}
+
+type SortDirection = "asc" | "desc" | null
+
+@Component({
+  selector: "app-data-table",
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  template: \`
+    <div class="table-container">
+      <input
+        type="text"
+        [ngModel]="filterText()"
+        (ngModelChange)="filterText.set($event)"
+        placeholder="Search..."
+        class="search-input"
+      />
+
+      <table>
+        <thead>
+          <tr>
+            @for (col of columns(); track col.key) {
+              <th
+                [class.sortable]="col.sortable"
+                (click)="col.sortable && toggleSort(col.key)"
+              >
+                {{ col.label }}
+                @if (sortColumn() === col.key) {
+                  <span>{{ sortDirection() === "asc" ? "^" : "v" }}</span>
+                }
+              </th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of displayedRows(); track trackByFn()(row)) {
+            <tr (click)="rowClick.emit(row)">
+              @for (col of columns(); track col.key) {
+                <td>{{ row[col.key] }}</td>
+              }
+            </tr>
+          } @empty {
+            <tr>
+              <td [attr.colspan]="columns().length">No results found</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      <div class="pagination">
+        <button [disabled]="currentPage() <= 1" (click)="prevPage()">
+          Previous
+        </button>
+        <span>Page {{ currentPage() }} of {{ totalPages() }}</span>
+        <button
+          [disabled]="currentPage() >= totalPages()"
+          (click)="nextPage()"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  \`,
+})
+export class DataTableComponent<T extends Record<string, unknown>> {
+  columns = input.required<Column<T>[]>()
+  data = input.required<T[]>()
+  pageSize = input(10)
+  trackByFn = input<(item: T) => unknown>(() => (item: T) => item)
+
+  rowClick = output<T>()
+
+  filterText = signal("")
+  sortColumn = signal<string | null>(null)
+  sortDirection = signal<SortDirection>(null)
+  currentPage = signal(1)
+
+  private filteredRows = computed(() => {
+    const text = this.filterText().toLowerCase()
+    if (!text) return this.data()
+    return this.data().filter((row) =>
+      Object.values(row).some((val) =>
+        String(val).toLowerCase().includes(text)
+      )
+    )
+  })
+
+  private sortedRows = computed(() => {
+    const rows = [...this.filteredRows()]
+    const col = this.sortColumn()
+    const dir = this.sortDirection()
+    if (!col || !dir) return rows
+
+    return rows.sort((a, b) => {
+      const aVal = a[col] as string
+      const bVal = b[col] as string
+      const cmp = String(aVal).localeCompare(String(bVal))
+      return dir === "asc" ? cmp : -cmp
+    })
+  })
+
+  totalPages = computed(() =>
+    Math.max(1, Math.ceil(this.sortedRows().length / this.pageSize()))
+  )
+
+  displayedRows = computed(() => {
+    const start = (this.currentPage() - 1) * this.pageSize()
+    return this.sortedRows().slice(start, start + this.pageSize())
+  })
+
+  toggleSort(key: string): void {
+    if (this.sortColumn() === key) {
+      const next =
+        this.sortDirection() === "asc"
+          ? "desc"
+          : this.sortDirection() === "desc"
+            ? null
+            : "asc"
+      this.sortDirection.set(next)
+      if (!next) this.sortColumn.set(null)
+    } else {
+      this.sortColumn.set(key)
+      this.sortDirection.set("asc")
+    }
+    this.currentPage.set(1)
+  }
+
+  prevPage(): void {
+    this.currentPage.update((p) => Math.max(1, p - 1))
+  }
+
+  nextPage(): void {
+    this.currentPage.update((p) => Math.min(this.totalPages(), p + 1))
+  }
+}`,
+  },
+  {
+    id: "vue-composable",
+    language: "Vue",
+    languageSlug: "vue",
+    project: "Shopping Cart",
+    projectSlug: "shoppingcart",
+    description: "Pinia store with composable for cart management",
+    fileName: "useCart.ts",
+    color: "#42b883",
+    code: `import { defineStore } from "pinia"
+import { computed, ref } from "vue"
+
+interface Product {
+  id: string
+  name: string
+  price: number
+  image: string
+}
+
+interface CartItem {
+  product: Product
+  quantity: number
+}
+
+export const useCartStore = defineStore("cart", () => {
+  const items = ref<CartItem[]>([])
+  const isOpen = ref(false)
+
+  const totalItems = computed(() =>
+    items.value.reduce((sum, item) => sum + item.quantity, 0)
+  )
+
+  const totalPrice = computed(() =>
+    items.value.reduce(
+      (sum, item) => sum + item.product.price * item.quantity,
+      0
+    )
+  )
+
+  const formattedTotal = computed(() =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(totalPrice.value)
+  )
+
+  function addItem(product: Product, quantity = 1): void {
+    const existing = items.value.find(
+      (item) => item.product.id === product.id
+    )
+    if (existing) {
+      existing.quantity += quantity
+    } else {
+      items.value.push({ product, quantity })
+    }
+  }
+
+  function removeItem(productId: string): void {
+    const index = items.value.findIndex(
+      (item) => item.product.id === productId
+    )
+    if (index !== -1) {
+      items.value.splice(index, 1)
+    }
+  }
+
+  function updateQuantity(productId: string, quantity: number): void {
+    const item = items.value.find(
+      (item) => item.product.id === productId
+    )
+    if (item) {
+      if (quantity <= 0) {
+        removeItem(productId)
+      } else {
+        item.quantity = quantity
+      }
+    }
+  }
+
+  function clearCart(): void {
+    items.value = []
+  }
+
+  function toggle(): void {
+    isOpen.value = !isOpen.value
+  }
+
+  return {
+    items,
+    isOpen,
+    totalItems,
+    totalPrice,
+    formattedTotal,
+    addItem,
+    removeItem,
+    updateQuantity,
+    clearCart,
+    toggle,
+  }
+})`,
+  },
+  {
+    id: "vue-sfc",
+    language: "Vue",
+    languageSlug: "vue",
+    project: "Search Filter",
+    projectSlug: "searchfilter",
+    description: "Composition API component with debounced search and transitions",
+    fileName: "SearchFilter.vue",
+    color: "#42b883",
+    code: `<script setup lang="ts">
+import { ref, computed, watch, onMounted } from "vue"
+
+interface Item {
+  id: number
+  title: string
+  category: string
+  tags: string[]
+}
+
+const props = defineProps<{
+  items: Item[]
+  placeholder?: string
+}>()
+
+const emit = defineEmits<{
+  select: [item: Item]
+  search: [query: string]
+}>()
+
+const query = ref("")
+const selectedCategory = ref<string | null>(null)
+const isLoading = ref(false)
+const inputRef = ref<HTMLInputElement | null>(null)
+
+const categories = computed(() => {
+  const unique = new Set(props.items.map((item) => item.category))
+  return ["All", ...Array.from(unique).sort()]
+})
+
+const filteredItems = computed(() => {
+  let results = props.items
+
+  if (selectedCategory.value && selectedCategory.value !== "All") {
+    results = results.filter(
+      (item) => item.category === selectedCategory.value
+    )
+  }
+
+  if (query.value.trim()) {
+    const search = query.value.toLowerCase()
+    results = results.filter(
+      (item) =>
+        item.title.toLowerCase().includes(search) ||
+        item.tags.some((tag) => tag.toLowerCase().includes(search))
+    )
+  }
+
+  return results
+})
+
+const resultCount = computed(() => filteredItems.value.length)
+
+let debounceTimer: ReturnType<typeof setTimeout>
+
+watch(query, (newQuery) => {
+  clearTimeout(debounceTimer)
+  isLoading.value = true
+  debounceTimer = setTimeout(() => {
+    emit("search", newQuery)
+    isLoading.value = false
+  }, 300)
+})
+
+function handleSelect(item: Item): void {
+  emit("select", item)
+}
+
+function clearFilters(): void {
+  query.value = ""
+  selectedCategory.value = null
+  inputRef.value?.focus()
+}
+
+onMounted(() => {
+  inputRef.value?.focus()
+})
+</script>
+
+<template>
+  <div class="search-filter">
+    <div class="controls">
+      <input
+        ref="inputRef"
+        v-model="query"
+        type="text"
+        :placeholder="placeholder ?? 'Search...'"
+        class="search-input"
+      />
+      <select v-model="selectedCategory" class="category-select">
+        <option
+          v-for="cat in categories"
+          :key="cat"
+          :value="cat === 'All' ? null : cat"
+        >
+          {{ cat }}
+        </option>
+      </select>
+      <button v-if="query || selectedCategory" @click="clearFilters">
+        Clear
+      </button>
+    </div>
+
+    <p class="result-count">{{ resultCount }} results</p>
+
+    <TransitionGroup name="list" tag="ul" class="item-list">
+      <li
+        v-for="item in filteredItems"
+        :key="item.id"
+        class="item"
+        @click="handleSelect(item)"
+      >
+        <span class="title">{{ item.title }}</span>
+        <span class="category">{{ item.category }}</span>
+        <span v-for="tag in item.tags" :key="tag" class="tag">
+          {{ tag }}
+        </span>
+      </li>
+    </TransitionGroup>
+
+    <p v-if="resultCount === 0" class="empty">No items match your search.</p>
+  </div>
+</template>`,
+  },
 ];
 
 export function getLessonBySlug(
