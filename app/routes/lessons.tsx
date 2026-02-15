@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Header } from "~/components/Header";
+import { Footer } from "~/components/Footer";
 import { LessonCard } from "~/components/LessonCard";
 import { lessons } from "~/data/lessons";
 import { useLocalStorage } from "~/hooks/useLocalStorage";
@@ -525,6 +526,7 @@ export default function Lessons() {
 					</Link>
 				</div>
 			</main>
+			<Footer />
 		</div>
 	);
 }

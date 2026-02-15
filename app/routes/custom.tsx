@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router";
 import { Header } from "~/components/Header";
+import { Footer } from "~/components/Footer";
 import { useLocalStorage } from "~/hooks/useLocalStorage";
 
 const LANGUAGES = [
@@ -12,19 +13,48 @@ const LANGUAGES = [
 	"Java",
 	"C",
 	"C++",
+	"C#",
 	"Ruby",
 	"Swift",
-	"CSS",
 	"Kotlin",
 	"PHP",
-	"Shell",
+	"Scala",
+	"Haskell",
+	"Lua",
+	"R",
+	"Perl",
+	"Dart",
+	"Elixir",
+	"Clojure",
+	"F#",
+	"OCaml",
+	"Julia",
+	"Zig",
+	"Nim",
+	"Erlang",
+	"Groovy",
+	"Objective-C",
+	"Assembly",
+	"COBOL",
+	"Fortran",
+	"Prolog",
+	"Scheme",
+	"Ada",
+	"Pascal",
+	"MATLAB",
+	"Bash",
+	"PowerShell",
+	"CSS",
 	"HTML",
 	"SQL",
+	"React",
+	"Angular",
+	"Vue",
 	"Other",
 ];
 
 const ACCEPTED_EXTENSIONS =
-	".js,.ts,.tsx,.jsx,.py,.rs,.go,.java,.c,.cpp,.h,.rb,.swift,.css,.kt,.php,.sh,.html,.sql,.txt,.md";
+	".js,.ts,.tsx,.jsx,.py,.rs,.go,.java,.c,.cpp,.cs,.h,.hpp,.rb,.swift,.css,.kt,.kts,.php,.sh,.ps1,.html,.htm,.sql,.txt,.md,.lua,.r,.pl,.dart,.ex,.exs,.clj,.fs,.fsx,.ml,.mli,.jl,.zig,.nim,.erl,.hrl,.groovy,.m,.asm,.s,.cob,.cbl,.f90,.f95,.f03,.pro,.scm,.ss,.adb,.ads,.pas,.mat,.vue,.tsx,.jsx,.scala,.hs";
 
 function cleanCode(raw: string): string {
 	// Normalize line endings
@@ -168,6 +198,7 @@ export default function Custom() {
 					</div>
 				</div>
 			</main>
+			<Footer />
 		</div>
 	);
 }

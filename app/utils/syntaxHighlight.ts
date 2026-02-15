@@ -75,8 +75,8 @@ export function getSyntaxColors(code: string): string[] {
     /"""[\s\S]*?"""/g,
     /'''[\s\S]*?'''/g,
     /`(?:[^`\\]|\\.)*`/g,
-    /"(?:[^"\\]|\\.)*"/g,
-    /'(?:[^'\\]|\\.)*'/g,
+    /"(?:[^"\\\n]|\\.)*"/g,
+    /'(?:[^'\\\n]|\\.)*'/g,
   ];
   for (const pattern of stringPatterns) {
     let m;

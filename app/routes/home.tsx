@@ -1,4 +1,5 @@
 import { Header } from "~/components/Header";
+import { Footer } from "~/components/Footer";
 import { Link } from "react-router";
 
 const LANGUAGES = [
@@ -14,6 +15,12 @@ const LANGUAGES = [
 	{ name: "CSS", color: "#563d7c" },
 	{ name: "Kotlin", color: "#A97BFF" },
 	{ name: "PHP", color: "#4F5D95" },
+	{ name: "React", color: "#61dafb" },
+	{ name: "Angular", color: "#dd0031" },
+	{ name: "Vue", color: "#42b883" },
+	{ name: "Haskell", color: "#5e5086" },
+	{ name: "Scala", color: "#DC322F" },
+	{ name: "Elixir", color: "#6e4a7e" },
 ];
 
 export default function Home() {
@@ -30,7 +37,7 @@ export default function Home() {
 				</h1>
 				<p className="mt-6 max-w-lg text-lg text-[#94a3b8] leading-relaxed">
 					Practice typing with real programming syntax. Track your speed
-					and accuracy across 12 languages.
+					and accuracy across 49 lessons in 46 languages.
 				</p>
 				<Link
 					to="/lessons"
@@ -120,11 +127,11 @@ export default function Home() {
 								#
 							</div>
 							<h3 className="mt-4 text-lg font-semibold text-[#e2e8f0]">
-								12 Languages
+								46 Languages
 							</h3>
 							<p className="mt-2 text-sm text-[#94a3b8] leading-relaxed">
-								JavaScript, Python, Rust, Go, and more. Each lesson
-								uses idiomatic code from real projects.
+								JavaScript, Python, Rust, Go, React, Angular, Vue,
+								and many more. Each lesson uses idiomatic code.
 							</p>
 						</div>
 
@@ -148,7 +155,7 @@ export default function Home() {
 			<section className="px-6 py-20 border-t border-[#1e1e2e]">
 				<div className="mx-auto max-w-4xl text-center">
 					<h2 className="text-3xl font-bold tracking-tight">
-						12 Languages. Real Syntax.
+						46 Languages. Real Syntax.
 					</h2>
 					<p className="mt-3 text-[#94a3b8]">
 						Practice the languages you actually use at work.
@@ -166,22 +173,26 @@ export default function Home() {
 								{lang.name}
 							</span>
 						))}
+						<span className="inline-flex items-center rounded-full border border-[#1e1e2e] bg-[#111118] px-4 py-2 text-sm font-medium text-[#475569]">
+							+28 more
+						</span>
 					</div>
 				</div>
 			</section>
 
 			{/* Footer */}
-			<footer className="border-t border-[#1e1e2e] px-6 py-12 text-center">
+			<div className="border-t border-[#1e1e2e] px-6 py-10 text-center">
 				<p className="text-[#475569]">
 					Built for developers who want to type faster.
 				</p>
 				<Link
 					to="/lessons"
-					className="mt-4 inline-block text-sm font-medium text-[#f59e0b] hover:text-[#d97706]"
+					className="mt-3 inline-block text-sm font-medium text-[#f59e0b] hover:text-[#d97706] transition-colors"
 				>
 					Start practicing now
 				</Link>
-			</footer>
+			</div>
+			<Footer />
 		</div>
 	);
 }
